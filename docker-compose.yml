@@ -120,4 +120,4 @@ networks:
   netbox-internal:
     driver: bridge
   vlan-1280-netbox:
-    driver: bridge
+    driver: macvlan
