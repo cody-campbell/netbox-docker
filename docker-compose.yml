@@ -17,6 +17,12 @@ services:
       - netbox-media-files:/opt/netbox/netbox/media:rw
       - netbox-reports-files:/opt/netbox/netbox/reports:rw
       - netbox-scripts-files:/opt/netbox/netbox/scripts:rw
+    ports:
+      - "10.96.80.251:8000:8080"
+    networks:
+      - netbox-internal
+      - vlan-1280-netbox
+
   netbox-worker:
     <<: *netbox
     depends_on:
@@ -31,6 +37,10 @@ services:
       start_period: 20s
       timeout: 3s
       interval: 15s
+    ports: []
+    networks:
+      - netbox-internal
+
   netbox-housekeeping:
     <<: *netbox
     depends_on:
@@ -43,8 +53,10 @@ services:
       start_period: 20s
       timeout: 3s
       interval: 15s
+    ports: []
+    networks:
+      - netbox-internal
 
-  # postgres
   postgres:
     image: docker.io/postgres:17-alpine
     healthcheck:
@@ -56,14 +68,15 @@ services:
     env_file: env/postgres.env
     volumes:
       - netbox-postgres-data:/var/lib/postgresql/data
+    networks:
+      - netbox-internal
 
-  # redis
   redis:
     image: docker.io/valkey/valkey:8.1-alpine
     command:
       - sh
-      - -c # this is to evaluate the $REDIS_PASSWORD from the env
-      - valkey-server --appendonly yes --requirepass $$REDIS_PASSWORD ## $$ because of docker-compose
+      - -c
+      - valkey-server --appendonly yes --requirepass $$REDIS_PASSWORD
     healthcheck: &redis-healthcheck
       test: '[ $$(valkey-cli --pass "$${REDIS_PASSWORD}" ping) = ''PONG'' ]'
       start_period: 5s
@@ -73,16 +86,21 @@ services:
     env_file: env/redis.env
     volumes:
       - netbox-redis-data:/data
+    networks:
+      - netbox-internal
+
   redis-cache:
     image: docker.io/valkey/valkey:8.1-alpine
     command:
       - sh
-      - -c # this is to evaluate the $REDIS_PASSWORD from the env
-      - valkey-server --requirepass $$REDIS_PASSWORD ## $$ because of docker-compose
+      - -c
+      - valkey-server --requirepass $$REDIS_PASSWORD
     healthcheck: *redis-healthcheck
     env_file: env/redis-cache.env
     volumes:
       - netbox-redis-cache-data:/data
+    networks:
+      - netbox-internal
 
 volumes:
   netbox-media-files:
@@ -97,3 +115,9 @@ volumes:
     driver: local
   netbox-scripts-files:
     driver: local
+
+networks:
+  netbox-internal:
+    driver: bridge
+  vlan-1280-netbox:
+    driver: bridge
